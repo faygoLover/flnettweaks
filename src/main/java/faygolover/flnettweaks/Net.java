@@ -150,6 +150,9 @@ public final class Net {
             if (m.startsWith("Packet too big"))
                 return new Explained("flnettweaks: отправляемый пакет больше лимита " + size(FlnConfig.packet())
                         + " (" + m + "). Поднимите limits.packetKB в " + CONFIG, t);
+            if (c instanceof javax.net.ssl.SSLException || c instanceof io.netty.handler.ssl.NotSslRecordException)
+                return new Explained("flnettweaks: TLS не установилось (" + c.getClass().getSimpleName() + ": " + m + "). Сервер без TLS (нужен flnettweaks 1.1.0+"
+                        + " с tls.server = true) или соединение портит сеть. Обычный вход: tls.client = false в " + CONFIG, t);
             if (m.contains("Tried to read NBT tag that was too big"))
                 return new Explained("flnettweaks: NBT больше лимита " + size(FlnConfig.nbt()) + ". Поднимите limits.nbtKB в " + CONFIG, t);
         }

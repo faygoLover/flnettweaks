@@ -138,6 +138,7 @@ public final class JoinLog {
         if (stage != null) lines.append(String.format(Locale.ROOT, "%n    %-45s %s", stageName(stage), sec(now - stageStart)));
         conn.channel().attr(KEY).set(null);
         long total = now - start;
+        if (failed) ConnLog.loginFailed(who, result, total, stage == null ? null : "на этапе «" + stageName(stage) + "»: " + waitingFor());
         if (!FlnConfig.joinTimeline() && !failed && total < FlnConfig.slowStepMs()) return;
         NetStats.Conn st = NetStats.of(conn.channel());
         StringBuilder sb = new StringBuilder();

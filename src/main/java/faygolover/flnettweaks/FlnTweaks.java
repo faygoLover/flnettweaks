@@ -6,7 +6,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
@@ -27,6 +29,8 @@ public final class FlnTweaks {
         NetworkRegistry.newSimpleChannel(new ResourceLocation(MODID, "main"), () -> NET_VERSION, NET_VERSION::equals, NET_VERSION::equals);
         MinecraftForge.EVENT_BUS.addListener(this::onCommands);
         MinecraftForge.EVENT_BUS.addListener(this::onLoggedIn);
+        MinecraftForge.EVENT_BUS.addListener(this::onServerTick);
+        MinecraftForge.EVENT_BUS.addListener(this::onServerStarting);
         DebugTools.init();
         if (FMLEnvironment.dist.isClient()) ClientEvents.init();
     }
@@ -39,6 +43,15 @@ public final class FlnTweaks {
         if (e.getEntity() instanceof ServerPlayer sp && sp.connection != null) {
             JoinLog log = JoinLog.of(sp.connection.connection);
             if (log != null) log.finish("в мире", false);
+            ConnLog.serverLogin(sp);
         }
+    }
+
+    private void onServerTick(TickEvent.ServerTickEvent e) {
+        if (e.phase == TickEvent.Phase.END) ConnLog.serverTick(e.getServer());
+    }
+
+    private void onServerStarting(ServerAboutToStartEvent e) {
+        Tls.prepareServer();
     }
 }

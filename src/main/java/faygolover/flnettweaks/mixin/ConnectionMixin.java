@@ -4,13 +4,16 @@ import faygolover.flnettweaks.FlnConfig;
 import faygolover.flnettweaks.FlnTweaks;
 import faygolover.flnettweaks.Net;
 import faygolover.flnettweaks.NetStats;
+import faygolover.flnettweaks.client.ConnCause;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.timeout.TimeoutException;
 import net.minecraft.network.Connection;
+import net.minecraft.network.PacketListener;
 import net.minecraft.network.SkipPacketException;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.PacketFlow;
+import net.minecraft.network.protocol.status.ClientStatusPacketListener;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -29,7 +32,30 @@ public abstract class ConnectionMixin {
     @Shadow private Channel channel;
     @Shadow @Final private PacketFlow receiving;
     @Shadow public abstract void disconnect(Component reason);
+    @Shadow public abstract PacketListener getPacketListener();
+    @Shadow public abstract boolean isMemoryConnection();
     @Unique private boolean fln$logged;
+
+    /** Клиент, соединение игры (не пинг списка серверов и не одиночная игра). */
+    @Unique
+    private boolean fln$game() {
+        return receiving == PacketFlow.CLIENTBOUND && !isMemoryConnection() && !(getPacketListener() instanceof ClientStatusPacketListener);
+    }
+
+    @Inject(method = "exceptionCaught", at = @At("HEAD"), remap = false)
+    private void fln$cause(ChannelHandlerContext ctx, Throwable t, CallbackInfo ci) {
+        if (fln$game() && channel != null && channel.isOpen()) ConnCause.error(t);
+    }
+
+    @Inject(method = "disconnect", at = @At("HEAD"))
+    private void fln$selfClose(Component reason, CallbackInfo ci) {
+        if (fln$game() && channel != null && channel.isOpen()) ConnCause.set(ConnCause.Cause.LOCAL, reason.getString());
+    }
+
+    @Inject(method = "channelInactive", at = @At("HEAD"), remap = false)
+    private void fln$closedByPeer(ChannelHandlerContext ctx, CallbackInfo ci) {
+        if (fln$game()) ConnCause.set(ConnCause.Cause.NETWORK, "сервер закрыл соединение без сообщения");
+    }
 
     @ModifyVariable(method = "exceptionCaught", at = @At("HEAD"), argsOnly = true, remap = false)
     private Throwable fln$explain(Throwable t) {

@@ -118,12 +118,16 @@ public final class JoinTracker {
         active = false;
         long now = System.currentTimeMillis();
         timeline.append(String.format(Locale.ROOT, "%n    %-40s %s", stage.title, sec(now - stageStart)));
+        String lastStage = stage.title;
         long total = now - start;
         StringBuilder sb = new StringBuilder("flnettweaks: вход на сервер — ").append(result).append(" за ").append(sec(total)).append(timeline);
         if (forgeMessages > 0) sb.append(String.format(Locale.ROOT, "%n    Forge: сообщений %d, модов на сервере %d, реестров %d/%d", forgeMessages, mods, regDone, regTotal));
         sb.append(String.format(Locale.ROOT, "%n    чанков до входа в мир: %d (%s)", chunks, Net.size(chunkBytes)));
         if (slowest != null) sb.append(String.format(Locale.ROOT, "%n    дольше всего обрабатывался: %s — %d мс", slowest, slowestNs / 1_000_000));
         stage = Stage.DONE;
+        if (!result.equals("в мире") && !result.equals("отменено"))
+            faygolover.flnettweaks.ConnLog.write("НЕ ВОШЁЛ " + ClientNet.serverName() + "  " + result + " за " + sec(total) + " на этапе «" + lastStage + "»"
+                    + (ConnCause.detail != null ? ": " + ConnCause.detail : ""));
         if (total >= FlnConfig.slowStepMs() * 3 || !result.equals("в мире")) FlnTweaks.LOG.warn(sb.toString());
         else FlnTweaks.LOG.info(sb.toString());
     }

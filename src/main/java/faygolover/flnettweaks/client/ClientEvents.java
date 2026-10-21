@@ -46,6 +46,7 @@ public final class ClientEvents {
         MinecraftForge.EVENT_BUS.addListener(ClientEvents::onRender);
         MinecraftForge.EVENT_BUS.addListener(ClientEvents::onTick);
         MinecraftForge.EVENT_BUS.addListener(ClientEvents::onCommands);
+        ClientNet.init();
         if (FANCYMENU) FMLJavaModLoadingContext.get().getModEventBus().addListener(ClientEvents::onClientSetup);
     }
 
@@ -83,7 +84,7 @@ public final class ClientEvents {
         if (s instanceof ConnectScreen) JoinTracker.begin();
         else if (JoinTracker.active && s != null) {
             String n = s.getClass().getSimpleName();
-            if (n.contains("Disconnect")) JoinTracker.finish("отключение (" + n + ")");
+            if (n.contains("Disconnect") || s instanceof ReconnectScreen) JoinTracker.finish("отключение (" + n + ")");
             else if (s instanceof JoinMultiplayerScreen || s instanceof TitleScreen) JoinTracker.finish("отменено");
         }
     }

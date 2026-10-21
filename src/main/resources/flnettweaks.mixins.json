@@ -28,6 +28,8 @@
     "client.ChatValidationMixin",
     "client.ChunkSectionMixin",
     "client.ConnectScreenAccessor",
+    "client.ConnectScreenMixin",
+    "client.DisconnectedScreenAccessor",
     "client.ServerNameResolverMixin"
   ],
   "injectors": {

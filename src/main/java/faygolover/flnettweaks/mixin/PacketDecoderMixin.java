@@ -2,6 +2,7 @@ package faygolover.flnettweaks.mixin;
 
 import faygolover.flnettweaks.Net;
 import faygolover.flnettweaks.NetStats;
+import faygolover.flnettweaks.client.ConnCause;
 import faygolover.flnettweaks.client.JoinTracker;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
@@ -11,6 +12,8 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.PacketDecoder;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.PacketFlow;
+import net.minecraft.network.protocol.game.ClientboundDisconnectPacket;
+import net.minecraft.network.protocol.login.ClientboundLoginDisconnectPacket;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -50,6 +53,9 @@ public abstract class PacketDecoderMixin {
     private void fln$tail(ChannelHandlerContext ctx, ByteBuf in, List<Object> out, CallbackInfo ci) {
         if (out.isEmpty() || !(out.get(out.size() - 1) instanceof Packet<?> p)) return;
         NetStats.in(ctx.channel(), p, fln$size);
-        if (flow == PacketFlow.CLIENTBOUND) JoinTracker.packet(ctx.channel(), fln$proto, p, fln$size);
+        if (flow != PacketFlow.CLIENTBOUND) return;
+        JoinTracker.packet(ctx.channel(), fln$proto, p, fln$size);
+        if (p instanceof ClientboundDisconnectPacket d) ConnCause.set(ConnCause.Cause.KICK, d.getReason().getString());
+        else if (p instanceof ClientboundLoginDisconnectPacket d) ConnCause.set(ConnCause.Cause.KICK, d.getReason().getString());
     }
 }
