@@ -29,7 +29,13 @@
     "client.ChunkSectionMixin",
     "client.ConnectScreenAccessor",
     "client.ConnectScreenMixin",
+    "client.CreativeTabHeartbeatMixin",
     "client.DisconnectedScreenAccessor",
+    "client.IngredientHeartbeatMixin",
+    "client.ItemStackHeartbeatMixin",
+    "client.JeiFilterHeartbeatMixin",
+    "client.JeiHeartbeatMixin",
+    "client.JeiPluginHeartbeatMixin",
     "client.ServerNameResolverMixin"
   ],
   "injectors": {

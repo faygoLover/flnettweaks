@@ -1,8 +1,12 @@
 package faygolover.flnettweaks.client;
 
+import de.keksuccino.fancymenu.customization.action.Action;
+import de.keksuccino.fancymenu.customization.action.ActionRegistry;
 import de.keksuccino.fancymenu.customization.placeholder.DeserializedPlaceholderString;
 import de.keksuccino.fancymenu.customization.placeholder.Placeholder;
 import de.keksuccino.fancymenu.customization.placeholder.PlaceholderRegistry;
+
+import net.minecraft.network.chat.Component;
 
 import java.util.List;
 import java.util.function.Supplier;
@@ -12,6 +16,7 @@ import java.util.function.Supplier;
  * Класс загружается только если FancyMenu установлен (см. ClientEvents).
  * flnet_head — этап, flnet_body (значение line = 0, 1, …) — остальные строки по одной, flnet_wait — «Ждём: …»
  * (пусто, пока не нужно). Строки по номеру: FancyMenu переносит %n% до подстановки плейсхолдеров.
+ * flnet_reconnect — отсчёт до переподключения на экране отключения; действие flnet_reconnect_now — подключиться сейчас.
  */
 final class FancyMenuCompat {
     private FancyMenuCompat() {}
@@ -20,6 +25,21 @@ final class FancyMenuCompat {
         PlaceholderRegistry.register(new Simple("flnet_head", "Этап входа и время", () -> ClientEvents.snapshot().head()));
         PlaceholderRegistry.register(new Body());
         PlaceholderRegistry.register(new Simple("flnet_wait", "Чего ждём, если этап затянулся", () -> ClientEvents.snapshot().waiting()));
+        PlaceholderRegistry.register(new Simple("flnet_reconnect", "Экран отключения: отсчёт до переподключения после обрыва (пусто — его нет)",
+                () -> ClientNet.reconnectLine().toUpperCase(java.util.Locale.ROOT)));
+        ActionRegistry.register(new ReconnectNow());
+    }
+
+    /** Кнопка в меню: переподключиться сейчас, не дожидаясь отсчёта. */
+    private static final class ReconnectNow extends Action {
+        ReconnectNow() { super("flnet_reconnect_now"); }
+
+        @Override public boolean hasValue() { return false; }
+        @Override public void execute(String value) { ClientNet.reconnectNow(); }
+        @Override public Component getDisplayName() { return Component.literal("flnettweaks: переподключиться сейчас"); }
+        @Override public Component getDescription() { return Component.literal("На экране отключения после обрыва связи — не ждать отсчёт"); }
+        @Override public Component getValueDisplayName() { return Component.empty(); }
+        @Override public String getValuePreset() { return null; }
     }
 
     /** flnet_body: строка с номером line (0 — трафик, дальше последний пакет, реестры, чанки); нет такой — пусто. */

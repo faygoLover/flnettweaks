@@ -21,7 +21,7 @@ public final class FlnConfig {
     public static final ForgeConfigSpec.IntValue BIG_PACKET_KB, SLOW_STEP_S, SLOW_PACKET_MS;
     public static final ForgeConfigSpec.BooleanValue JOIN_TIMELINE, JOIN_DETAILS_ON_SCREEN, JOIN_DETAILS_VIA_FANCYMENU, IGNORE_CHAT_VALIDATION, SKIP_BROKEN_CHUNK_SECTIONS;
     public static final ForgeConfigSpec.IntValue CLOSE_AFTER_KICK_S, STALL_WARN_S, RECONNECT_ATTEMPTS, LOG_STALL_S;
-    public static final ForgeConfigSpec.BooleanValue AUTO_RECONNECT, CONN_LOG, CONN_LOG_DETAILS, TLS_SERVER, TLS_CLIENT;
+    public static final ForgeConfigSpec.BooleanValue AUTO_RECONNECT, CONN_LOG, CONN_LOG_DETAILS, TLS_SERVER, TLS_CLIENT, SMOOTH_JOIN;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> TLS_CLIENT_HOSTS;
     public static final ForgeConfigSpec.ConfigValue<String> TLS_SNI;
 
@@ -52,6 +52,8 @@ public final class FlnConfig {
         B.comment("Устойчивость.").push("tweaks");
         IGNORE_CHAT_VALIDATION = B.comment("Клиент: не отключаться от сервера из-за ошибки проверки подписи чата (только запись в лог).").define("ignoreChatValidationErrors", true);
         SKIP_BROKEN_CHUNK_SECTIONS = B.comment("Клиент: пропускать пустые/обрезанные секции чанка вместо вылета.").define("skipBrokenChunkSections", true);
+        SMOOTH_JOIN = B.comment("Клиент: плавный вход — пока игра долго обрабатывает данные сервера (теги → запуск JEI), экран загрузки",
+                "продолжает рисоваться, и окно не «Не отвечает».").define("smoothJoin", true);
         B.pop();
         B.comment("Обрывы связи.").push("connection");
         CLOSE_AFTER_KICK_S = B.comment("Сервер: если сообщение об отключении не дошло до игрока за столько секунд, соединение закрывается",
@@ -102,6 +104,7 @@ public final class FlnConfig {
     public static boolean joinDetailsViaFancyMenu() { return get(JOIN_DETAILS_VIA_FANCYMENU, true); }
     public static boolean ignoreChatValidation() { return get(IGNORE_CHAT_VALIDATION, true); }
     public static boolean skipBrokenSections() { return get(SKIP_BROKEN_CHUNK_SECTIONS, true); }
+    public static boolean smoothJoin() { return get(SMOOTH_JOIN, true); }
     public static int closeAfterKickSeconds() { return get(CLOSE_AFTER_KICK_S, 5); }
     public static long stallWarnMs() { return get(STALL_WARN_S, 3) * 1000L; }
     public static boolean autoReconnect() { return get(AUTO_RECONNECT, true); }

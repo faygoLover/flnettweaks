@@ -84,7 +84,7 @@ public final class ClientEvents {
         if (s instanceof ConnectScreen) JoinTracker.begin();
         else if (JoinTracker.active && s != null) {
             String n = s.getClass().getSimpleName();
-            if (n.contains("Disconnect") || s instanceof ReconnectScreen) JoinTracker.finish("отключение (" + n + ")");
+            if (n.contains("Disconnect")) JoinTracker.finish("отключение (" + n + ")");
             else if (s instanceof JoinMultiplayerScreen || s instanceof TitleScreen) JoinTracker.finish("отменено");
         }
     }
@@ -168,8 +168,12 @@ public final class ClientEvents {
             }
             out.add(new Line(w, GRAY));
         }
+        long busy = JoinTracker.handling ? now - JoinTracker.handlingSince : 0;
         long quiet = now - Math.max(JoinTracker.stageStart, JoinTracker.lastAt);
-        if (quiet >= FlnConfig.slowStepMs()) out.add(new Line("Ждём: " + hint(st, cs, c, pos) + " — " + sec(quiet), YELLOW));
+        if (busy >= 1000) {
+            String step = Heartbeat.step;
+            out.add(new Line("Ждём: игра обрабатывает " + JoinTracker.handlingWhat + (step != null ? " — " + step : "") + " — " + sec(busy), YELLOW));
+        } else if (quiet >= FlnConfig.slowStepMs()) out.add(new Line("Ждём: " + hint(st, cs, c, pos) + " — " + sec(quiet), YELLOW));
         return out;
     }
 

@@ -29,6 +29,10 @@ public final class JoinTracker {
     }
 
     public static volatile boolean active;
+    /** Основной поток клиента обрабатывает пакет во время входа (для плавного входа, client.Heartbeat). */
+    public static volatile boolean handling;
+    public static volatile String handlingWhat;
+    public static volatile long handlingSince;
     public static volatile Stage stage = Stage.DONE;
     public static volatile long start, stageStart;
     public static volatile Channel channel;

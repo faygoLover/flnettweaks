@@ -8,9 +8,9 @@ import faygolover.flnettweaks.NetStats;
 import faygolover.flnettweaks.Tls;
 import faygolover.flnettweaks.mixin.client.DisconnectedScreenAccessor;
 import io.netty.channel.Channel;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.Screen;
@@ -19,8 +19,8 @@ import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.network.Connection;
+import net.minecraft.network.chat.Component;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
-import net.minecraftforge.client.event.RenderGuiEvent;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
@@ -28,8 +28,9 @@ import net.minecraftforge.event.TickEvent;
 import java.util.Locale;
 
 /**
- * Клиент и обрывы связи: надпись «Сервер не отвечает» поверх игры, само-переподключение после обрыва сети
- * (не после кика), свой журнал соединений.
+ * Клиент и обрывы связи: «Сервер не отвечает» в строке над хотбаром, само-переподключение после обрыва сети
+ * (не после кика) с отсчётом на экране отключения (в сборке его оформляет FancyMenu — плейсхолдер flnet_reconnect),
+ * свой журнал соединений.
  */
 public final class ClientNet {
     private ClientNet() {}
@@ -51,7 +52,8 @@ public final class ClientNet {
 
     public static void init() {
         MinecraftForge.EVENT_BUS.addListener(ClientNet::onOpen);
-        MinecraftForge.EVENT_BUS.addListener(ClientNet::onHud);
+        MinecraftForge.EVENT_BUS.addListener(ClientNet::onInit);
+        MinecraftForge.EVENT_BUS.addListener(ClientNet::onRender);
         MinecraftForge.EVENT_BUS.addListener(ClientNet::onTick);
         MinecraftForge.EVENT_BUS.addListener(ClientNet::onLogout);
     }
@@ -68,11 +70,18 @@ public final class ClientNet {
 
     // ---------- переподключение ----------
 
+    /** Экран отключения, на котором идёт отсчёт, и когда переподключаться. */
+    private static Screen waitScreen;
+    private static long reconnectAt;
+    private static String gaveUp;
+
     private static void onOpen(ScreenEvent.Opening e) {
         Screen s = e.getNewScreen();
         if (s instanceof ConnectScreen) {
             if (!ours) attempt = 0;   // игрок подключается сам — счёт попыток заново
             ours = false;
+            waitScreen = null;
+            gaveUp = null;
             ConnCause.reset();
             return;
         }
@@ -80,34 +89,76 @@ public final class ClientNet {
         ConnCause.Cause c = ConnCause.cause;
         // нет причины при attempt > 0 — не удалось даже подключиться (сервер ещё не поднялся, сеть не вернулась)
         boolean network = c == ConnCause.Cause.NETWORK || c == null && attempt > 0;
-        String reason = ((DisconnectedScreenAccessor) s).fln$reason().getString().replace('\n', ' ');
         if (!network || !FlnConfig.autoReconnect() || server == null || address == null) return;
+        String reason = ((DisconnectedScreenAccessor) s).fln$reason().getString().replace('\n', ' ');
         if (attempt >= FlnConfig.reconnectAttempts()) {
             ConnLog.write("СДАЛСЯ  " + serverName() + "  " + attempt + " попыток переподключения не помогли: " + reason);
+            gaveUp = "переподключиться не удалось: попыток " + attempt;
             attempt = 0;
             return;
         }
         int delay = DELAYS[Math.min(attempt, DELAYS.length - 1)];
         ConnLog.write(String.format(Locale.ROOT, "ОБРЫВ   %s  %s — переподключение через %d с (попытка %d из %d)",
                 serverName(), reason, delay, attempt + 1, FlnConfig.reconnectAttempts()));
-        e.setNewScreen(new ReconnectScreen(s.getTitle(), ((DisconnectedScreenAccessor) s).fln$reason(), delay, attempt + 1, FlnConfig.reconnectAttempts()));
+        waitScreen = s;
+        reconnectAt = System.currentTimeMillis() + delay * 1000L;
+    }
+
+    /** Строка для экрана отключения: отсчёт до переподключения (пусто, если его нет). */
+    public static String reconnectLine() {
+        Minecraft mc = Minecraft.getInstance();
+        if (waitScreen != null && mc.screen == waitScreen) {
+            long left = Math.max(0, (reconnectAt - System.currentTimeMillis() + 999) / 1000);
+            return "переподключение через " + left + " с · попытка " + (attempt + 1) + " из " + FlnConfig.reconnectAttempts();
+        }
+        if (gaveUp != null && mc.screen instanceof DisconnectedScreen) return gaveUp;
+        return "";
+    }
+
+    /** Подключиться сейчас, не дожидаясь отсчёта (кнопка без FancyMenu, действие flnet_reconnect_now в FancyMenu). */
+    public static void reconnectNow() {
+        if (waitScreen != null && Minecraft.getInstance().screen == waitScreen) reconnect();
+    }
+
+    private static void reconnectTick(Minecraft mc) {
+        if (waitScreen == null) return;
+        if (mc.screen != waitScreen) {   // игрок ушёл с экрана («Вернуться») — отмена
+            waitScreen = null;
+            attempt = 0;
+            return;
+        }
+        if (System.currentTimeMillis() >= reconnectAt) reconnect();
     }
 
     static void reconnect() {
         Minecraft mc = Minecraft.getInstance();
-        if (server == null || address == null) { cancel(); return; }
+        waitScreen = null;
+        if (server == null || address == null) return;
         attempt++;
         ours = true;
         FlnTweaks.LOG.info("flnettweaks: переподключение к {} (попытка {})", serverName(), attempt);
         ConnectScreen.startConnecting(new JoinMultiplayerScreen(new TitleScreen()), mc, address, server, false);
     }
 
-    static void cancel() {
-        attempt = 0;
-        Minecraft.getInstance().setScreen(new JoinMultiplayerScreen(new TitleScreen()));
+    private static boolean viaMenu() {
+        return ClientEvents.FANCYMENU && FlnConfig.joinDetailsViaFancyMenu();
     }
 
-    // ---------- надпись поверх игры ----------
+    /** Без FancyMenu-терминала: кнопка «Подключиться сейчас» и строка отсчёта на обычном экране отключения. */
+    private static void onInit(ScreenEvent.Init.Post e) {
+        if (e.getScreen() != waitScreen || viaMenu()) return;
+        Screen s = e.getScreen();
+        e.addListener(Button.builder(Component.literal("Подключиться сейчас"), b -> reconnectNow())
+                .bounds(s.width / 2 - 100, s.height - 30, 200, 20).build());
+    }
+
+    private static void onRender(ScreenEvent.Render.Post e) {
+        if (!(e.getScreen() instanceof DisconnectedScreen) || viaMenu()) return;
+        String l = reconnectLine();
+        if (!l.isEmpty()) e.getGuiGraphics().drawCenteredString(Minecraft.getInstance().font, l, e.getScreen().width / 2, e.getScreen().height - 46, 0xFFE060);
+    }
+
+    // ---------- «Сервер не отвечает» — в строке над хотбаром ----------
 
     private static Channel gameChannel(Minecraft mc) {
         var l = mc.getConnection();
@@ -116,28 +167,19 @@ public final class ClientNet {
         return c.isMemoryConnection() ? null : c.channel();
     }
 
-    private static void onHud(RenderGuiEvent.Post e) {
+    private static long shownSec = -1;
+
+    private static void stallMessage(Minecraft mc, Channel ch) {
         long warn = FlnConfig.stallWarnMs();
-        if (warn <= 0) return;
-        Minecraft mc = Minecraft.getInstance();
-        Channel ch = gameChannel(mc);
-        if (ch == null) return;
         long last = NetStats.of(ch).lastInAt;
         long gap = System.currentTimeMillis() - last;
-        if (last == 0 || gap < warn) return;
-        GuiGraphics g = e.getGuiGraphics();
-        Font font = mc.font;
-        int w = g.guiWidth();
-        long left = Math.max(0, FlnConfig.readTimeout() * 1000L - gap);
-        String l1 = String.format(Locale.ROOT, "Сервер не отвечает: %d с", gap / 1000);
-        String l2 = "Ждём связь ещё " + left / 1000 + " с" + (FlnConfig.autoReconnect() ? ", потом переподключимся сами" : "");
-        String l3 = gap >= 20_000 ? "Esc → «Отключиться» — зайти заново сразу" : null;
-        int y = 32;
-        int bw = Math.max(font.width(l1), Math.max(font.width(l2), l3 == null ? 0 : font.width(l3))) + 12;
-        g.fill(w / 2 - bw / 2, y - 4, w / 2 + bw / 2, y + (l3 == null ? 22 : 32), 0xA0000000);
-        g.drawCenteredString(font, l1, w / 2, y, 0xFFE060);
-        g.drawCenteredString(font, l2, w / 2, y + 11, 0xC8C8C8);
-        if (l3 != null) g.drawCenteredString(font, l3, w / 2, y + 21, 0xA8A8A8);
+        if (warn <= 0 || last == 0 || gap < warn) { shownSec = -1; return; }
+        long sec = gap / 1000;
+        if (sec == shownSec) return;
+        shownSec = sec;
+        long left = Math.max(0, FlnConfig.readTimeout() - sec);
+        String t = "Сервер не отвечает " + sec + " с · ждём ещё " + left + " с" + (FlnConfig.autoReconnect() ? ", потом переподключимся" : "");
+        mc.gui.setOverlayMessage(Component.literal(t).withStyle(ChatFormatting.YELLOW), false);
     }
 
     // ---------- журнал ----------
@@ -145,8 +187,10 @@ public final class ClientNet {
     private static void onTick(TickEvent.ClientTickEvent e) {
         if (e.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getInstance();
+        reconnectTick(mc);
         Channel ch = gameChannel(mc);
         if (ch == null || mc.player == null) return;
+        stallMessage(mc, ch);
         long now = System.currentTimeMillis();
         if (session != ch) {
             session = ch;
