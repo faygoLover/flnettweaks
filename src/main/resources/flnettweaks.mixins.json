@@ -1,0 +1,36 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "faygolover.flnettweaks.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "flnettweaks.refmap.json",
+  "mixins": [
+    "ClientboundPayloadMixin",
+    "ClientChannelInitMixin",
+    "CompressionDecoderMixin",
+    "CompressionEncoderMixin",
+    "ConnectionMixin",
+    "FrameDecoderMixin",
+    "FramePrependerMixin",
+    "FriendlyByteBufMixin",
+    "HandshakeHandlerMixin",
+    "LoginAnswerMixin",
+    "LoginQueryMixin",
+    "PacketDecoderMixin",
+    "PacketEncoderMixin",
+    "PacketUtilsMixin",
+    "ServerboundPayloadMixin",
+    "ServerChannelInitMixin",
+    "ServerGameListenerMixin",
+    "ServerLoginListenerMixin"
+  ],
+  "client": [
+    "client.ChatValidationMixin",
+    "client.ChunkSectionMixin",
+    "client.ConnectScreenAccessor",
+    "client.ServerNameResolverMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
