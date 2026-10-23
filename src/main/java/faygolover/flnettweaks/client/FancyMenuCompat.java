@@ -5,6 +5,7 @@ import de.keksuccino.fancymenu.customization.action.ActionRegistry;
 import de.keksuccino.fancymenu.customization.placeholder.DeserializedPlaceholderString;
 import de.keksuccino.fancymenu.customization.placeholder.Placeholder;
 import de.keksuccino.fancymenu.customization.placeholder.PlaceholderRegistry;
+import faygolover.flnettweaks.FlnConfig;
 
 import net.minecraft.network.chat.Component;
 
@@ -17,6 +18,7 @@ import java.util.function.Supplier;
  * flnet_head — этап, flnet_body (значение line = 0, 1, …) — остальные строки по одной, flnet_wait — «Ждём: …»
  * (пусто, пока не нужно). Строки по номеру: FancyMenu переносит %n% до подстановки плейсхолдеров.
  * flnet_reconnect — отсчёт до переподключения на экране отключения; действие flnet_reconnect_now — подключиться сейчас.
+ * flnet_tls — «ВКЛ»/«ВЫКЛ» (tls.client); действие flnet_tls_toggle (on / off / toggle) — переключить до подключения.
  */
 final class FancyMenuCompat {
     private FancyMenuCompat() {}
@@ -27,7 +29,28 @@ final class FancyMenuCompat {
         PlaceholderRegistry.register(new Simple("flnet_wait", "Чего ждём, если этап затянулся", () -> ClientEvents.snapshot().waiting()));
         PlaceholderRegistry.register(new Simple("flnet_reconnect", "Экран отключения: отсчёт до переподключения после обрыва (пусто — его нет)",
                 () -> ClientNet.reconnectLine().toUpperCase(java.util.Locale.ROOT)));
+        PlaceholderRegistry.register(new Simple("flnet_tls", "TLS при подключении к серверам: ВКЛ / ВЫКЛ",
+                () -> FlnConfig.tlsClient() ? "ВКЛ" : "ВЫКЛ"));
         ActionRegistry.register(new ReconnectNow());
+        ActionRegistry.register(new TlsToggle());
+    }
+
+    /** Кнопка в меню серверов: TLS вкл/выкл (значение on, off или toggle), сразу пишется в конфиг. */
+    private static final class TlsToggle extends Action {
+        TlsToggle() { super("flnet_tls_toggle"); }
+
+        @Override public boolean hasValue() { return true; }
+
+        @Override
+        public void execute(String value) {
+            String v = value == null ? "" : value.trim().toLowerCase(java.util.Locale.ROOT);
+            FlnConfig.setTlsClient(v.equals("on") || (!v.equals("off") && !FlnConfig.tlsClient()));
+        }
+
+        @Override public Component getDisplayName() { return Component.literal("flnettweaks: TLS вкл/выкл"); }
+        @Override public Component getDescription() { return Component.literal("Подключаться к серверам через TLS: on, off или toggle (переключить)"); }
+        @Override public Component getValueDisplayName() { return Component.literal("on / off / toggle"); }
+        @Override public String getValuePreset() { return "toggle"; }
     }
 
     /** Кнопка в меню: переподключиться сейчас, не дожидаясь отсчёта. */

@@ -71,7 +71,9 @@ public final class FlnConfig {
         B.comment("TLS-обёртка: соединение с сервером снаружи выглядит как HTTPS (провайдер, VPN и DPI не видят, что это Minecraft) и шифруется.",
                 "Сервер принимает и TLS, и обычный вход на одном порту.").push("tls");
         TLS_SERVER = B.comment("Сервер: принимать TLS-подключения.").define("server", true);
-        TLS_CLIENT = B.comment("Клиент: подключаться к серверам через TLS. Сервер должен быть с flnettweaks 1.1.0+ и tls.server = true.").define("client", false);
+        TLS_CLIENT = B.comment("Клиент: подключаться к серверам через TLS. Сервер должен быть с flnettweaks 1.1.0+ и tls.server = true.",
+                "Переключается и в игре, до подключения: строка «ШИФР» на экране серверов (меню сборки) или кнопка «TLS» без FancyMenu.",
+                "Помогает, если провайдер или DPI режет Minecraft; через VPN обычно не нужен.").define("client", false);
         TLS_CLIENT_HOSTS = B.comment("Клиент: к каким адресам (как в списке серверов, без порта) подключаться через TLS. Пусто — ко всем.")
                 .defineListAllowEmpty("clientHosts", List.of(), o -> o instanceof String);
         TLS_SNI = B.comment("Клиент: имя сайта в начале TLS (SNI), его видит провайдер. Пусто — адрес сервера, если это имя, а не IP.").define("sni", "");
@@ -114,6 +116,17 @@ public final class FlnConfig {
     public static long logStallMs() { return get(LOG_STALL_S, 3) * 1000L; }
     public static boolean tlsServer() { return get(TLS_SERVER, true); }
     public static boolean tlsClient() { return get(TLS_CLIENT, false); }
+
+    /** Клиент: включить/выключить TLS из меню (экран серверов) и сразу записать в конфиг. Действует со следующего подключения. */
+    public static void setTlsClient(boolean on) {
+        try {
+            TLS_CLIENT.set(on);
+            TLS_CLIENT.save();
+            FlnTweaks.LOG.info("flnettweaks: TLS при подключении к серверам — {} (переключено в меню)", on ? "вкл" : "выкл");
+        } catch (RuntimeException e) {
+            FlnTweaks.LOG.warn("flnettweaks: не удалось переключить TLS — конфиг ещё не загружен", e);
+        }
+    }
 
     public static String tlsSni() {
         try { return TLS_SNI.get().trim(); } catch (RuntimeException e) { return ""; }

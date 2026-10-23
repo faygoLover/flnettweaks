@@ -12,6 +12,8 @@ import faygolover.flnettweaks.mixin.client.ConnectScreenAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.ReceivingLevelScreen;
 import net.minecraft.client.gui.screens.Screen;
@@ -46,6 +48,7 @@ public final class ClientEvents {
         MinecraftForge.EVENT_BUS.addListener(ClientEvents::onRender);
         MinecraftForge.EVENT_BUS.addListener(ClientEvents::onTick);
         MinecraftForge.EVENT_BUS.addListener(ClientEvents::onCommands);
+        MinecraftForge.EVENT_BUS.addListener(ClientEvents::onInit);
         ClientNet.init();
         if (FANCYMENU) FMLJavaModLoadingContext.get().getModEventBus().addListener(ClientEvents::onClientSetup);
     }
@@ -77,6 +80,23 @@ public final class ClientEvents {
             else body.add(l.text);
         }
         return new Snapshot(head, body, wait);
+    }
+
+    /** Экран серверов без FancyMenu: кнопка «TLS: вкл/выкл» в углу (с FancyMenu её место — строка «ШИФР» меню-терминала). */
+    private static void onInit(ScreenEvent.Init.Post e) {
+        if (FANCYMENU || !(e.getScreen() instanceof JoinMultiplayerScreen)) return;
+        e.addListener(Button.builder(tlsLabel(), b -> {
+                    FlnConfig.setTlsClient(!FlnConfig.tlsClient());
+                    b.setMessage(tlsLabel());
+                })
+                .bounds(5, 5, 90, 20)
+                .tooltip(Tooltip.create(Component.literal("Подключаться к серверам через TLS (снаружи похоже на HTTPS). "
+                        + "Помогает, если провайдер режет Minecraft. Сервер должен быть с flnettweaks 1.1.0+.")))
+                .build());
+    }
+
+    private static Component tlsLabel() {
+        return Component.literal("TLS: " + (FlnConfig.tlsClient() ? "вкл" : "выкл"));
     }
 
     private static void onOpen(ScreenEvent.Opening e) {
