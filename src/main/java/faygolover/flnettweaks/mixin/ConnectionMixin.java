@@ -30,6 +30,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Connection.class)
 public abstract class ConnectionMixin {
     @Shadow private Channel channel;
+    @Shadow private boolean disconnectionHandled;
     @Shadow @Final private PacketFlow receiving;
     @Shadow public abstract void disconnect(Component reason);
     @Shadow public abstract PacketListener getPacketListener();
@@ -82,5 +83,14 @@ public abstract class ConnectionMixin {
         FlnTweaks.LOG.warn(msg);
         ci.cancel();
         disconnect(Component.translatable("disconnect.timeout").append("\n").append(Component.literal(msg)));
+    }
+
+    /**
+     * Сервер: «handleDisconnection() called twice» — ваниль зовёт её и при кике (executeBlocking), и в тике списка соединений;
+     * второй вызов ничего не делает, только пишет предупреждение. Молча пропускаем.
+     */
+    @Inject(method = "handleDisconnection", at = @At("HEAD"), cancellable = true)
+    private void fln$onceOnly(CallbackInfo ci) {
+        if (disconnectionHandled && channel != null && !channel.isOpen()) ci.cancel();
     }
 }
