@@ -58,6 +58,15 @@ public final class Tls {
 
     // ---------- сервер ----------
 
+    /**
+     * Закрытие TLS не ждёт мёртвого собеседника: close_notify отправляется не дольше 0,2 с (Netty — 3 с), ответ не ждём.
+     * Ванильный Connection.disconnect ждёт закрытия канала в основном потоке — с 3 с сервер стоял на каждом обрыве.
+     */
+    private static void closeFast(SslHandler h) {
+        h.setCloseNotifyFlushTimeoutMillis(200);
+        h.setCloseNotifyReadTimeoutMillis(0);
+    }
+
     /** ServerConnectionListener: первым в цепочку — определитель TLS. */
     public static void serverChannel(Channel ch) {
         if (FlnConfig.tlsServer() && serverContext() != null) ch.pipeline().addFirst("fln_tls_detect", new Detector());
@@ -72,6 +81,7 @@ public final class Tls {
                 if (in.getUnsignedByte(i + 1) == 0x03) {
                     SslHandler h = serverContext().newHandler(ctx.alloc());
                     h.setHandshakeTimeoutMillis(HANDSHAKE_MS);
+                    closeFast(h);
                     ctx.channel().attr(ON).set(true);
                     ctx.pipeline().addAfter(ctx.name(), "fln_tls", h);
                 }
@@ -130,6 +140,7 @@ public final class Tls {
                 String sni = FlnConfig.tlsSni();
                 SslHandler h = clientContext().newHandler(ctx.alloc(), sni.isEmpty() ? a.getHostString() : sni, a.getPort());
                 h.setHandshakeTimeoutMillis(HANDSHAKE_MS);
+                closeFast(h);
                 ctx.channel().attr(ON).set(true);
                 ctx.pipeline().addAfter(ctx.name(), "fln_tls", h);
                 FlnTweaks.LOG.info("flnettweaks: подключение к {}:{} через TLS{}", a.getHostString(), a.getPort(), sni.isEmpty() ? "" : " (SNI " + sni + ")");

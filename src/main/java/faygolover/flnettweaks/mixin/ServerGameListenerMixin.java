@@ -73,7 +73,7 @@ public abstract class ServerGameListenerMixin {
             FlnTweaks.LOG.warn("flnettweaks: {} — сообщение об отключении не дошло за {} с, закрываем соединение (причина: {})",
                     name, sec, ConnLog.reason(reason));
             ConnLog.forced(ch, sec);
-            server.execute(() -> connection.disconnect(reason));
+            ch.close();   // в сетевом потоке: основной поток сервера не ждёт закрытия (с TLS ждал 3 с); игрока уберёт следующий тик
         }, sec, TimeUnit.SECONDS);
     }
 
