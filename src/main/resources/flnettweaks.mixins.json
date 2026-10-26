@@ -5,7 +5,12 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "flnettweaks.refmap.json",
   "mixins": [
+    "ClientboundPayloadAccess",
+    "ClientIntentionMixin",
+    "CompressionEncoderAccess",
     "ClientboundPayloadMixin",
+    "IndexedCodecMixin",
+    "ServerboundPayloadAccess",
     "ClientChannelInitMixin",
     "CompressionDecoderMixin",
     "CompressionEncoderMixin",
@@ -22,6 +27,7 @@
     "ServerboundPayloadMixin",
     "ServerChannelInitMixin",
     "ServerGameListenerMixin",
+    "ServerHandshakeMixin",
     "ServerLoginListenerMixin"
   ],
   "client": [
@@ -31,6 +37,7 @@
     "client.ConnectScreenMixin",
     "client.CreativeTabHeartbeatMixin",
     "client.DisconnectedScreenAccessor",
+    "client.JoinMultiplayerScreenAccessor",
     "client.IngredientHeartbeatMixin",
     "client.ItemStackHeartbeatMixin",
     "client.JeiFilterHeartbeatMixin",

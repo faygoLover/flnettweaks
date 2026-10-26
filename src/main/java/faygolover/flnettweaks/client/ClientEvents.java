@@ -29,7 +29,6 @@ import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 
 import java.util.ArrayList;
@@ -50,13 +49,15 @@ public final class ClientEvents {
         MinecraftForge.EVENT_BUS.addListener(ClientEvents::onCommands);
         MinecraftForge.EVENT_BUS.addListener(ClientEvents::onInit);
         ClientNet.init();
-        if (FANCYMENU) FMLJavaModLoadingContext.get().getModEventBus().addListener(ClientEvents::onClientSetup);
+        // Плейсхолдеры и действия FancyMenu — до запуска его движка меню (он стартует раньше FMLClientSetupEvent и сразу
+        // читает слушатели клавиш): в основном потоке в конце этапа создания модов.
+        if (FANCYMENU) FMLJavaModLoadingContext.get().getModEventBus().addListener(ClientEvents::onConstruct);
     }
 
     /** FancyMenu есть — подробности входа показывает меню-терминал (плейсхолдеры), см. FancyMenuCompat. */
     static final boolean FANCYMENU = ModList.get() != null && ModList.get().isLoaded("fancymenu");
 
-    private static void onClientSetup(FMLClientSetupEvent e) {
+    private static void onConstruct(net.minecraftforge.fml.event.lifecycle.FMLConstructModEvent e) {
         e.enqueueWork(FancyMenuCompat::register);
     }
 
@@ -82,9 +83,17 @@ public final class ClientEvents {
         return new Snapshot(head, body, wait);
     }
 
-    /** Экран серверов без FancyMenu: кнопка «TLS: вкл/выкл» в углу (с FancyMenu её место — строка «ШИФР» меню-терминала). */
+    /**
+     * Экран серверов без FancyMenu: кнопки «TLS: вкл/выкл» и «Соединение…» в углу (с FancyMenu их место — строки «ШИФР» и
+     * «СОЕДИНЕНИЕ» меню-терминала).
+     */
     private static void onInit(ScreenEvent.Init.Post e) {
         if (FANCYMENU || !(e.getScreen() instanceof JoinMultiplayerScreen)) return;
+        Screen scr = e.getScreen();
+        e.addListener(Button.builder(Component.literal("Соединение…"), b -> Minecraft.getInstance().setScreen(new NetOptionsScreen(scr)))
+                .bounds(100, 5, 90, 20)
+                .tooltip(Tooltip.create(Component.literal("Расширенные настройки соединения: ограничение скорости, терпение, сжатие, проверка связи")))
+                .build());
         e.addListener(Button.builder(tlsLabel(), b -> {
                     FlnConfig.setTlsClient(!FlnConfig.tlsClient());
                     b.setMessage(tlsLabel());
@@ -226,8 +235,12 @@ public final class ClientEvents {
         })));
         e.getDispatcher().register(root
                 .then(Commands.literal("stats").executes(c -> run(c, o -> FlnCommands.statsLines(true, o)))
-                        .then(Commands.literal("in").executes(c -> run(c, o -> FlnCommands.statsLines(true, o))))
-                        .then(Commands.literal("out").executes(c -> run(c, o -> FlnCommands.statsLines(false, o)))))
+                        .then(Commands.literal("in").executes(c -> run(c, o -> FlnCommands.statsLines(true, o)))
+                                .then(Commands.argument("key", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+                                        .executes(c -> run(c, o -> FlnCommands.detailLines(true, com.mojang.brigadier.arguments.StringArgumentType.getString(c, "key"), o)))))
+                        .then(Commands.literal("out").executes(c -> run(c, o -> FlnCommands.statsLines(false, o)))
+                                .then(Commands.argument("key", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+                                        .executes(c -> run(c, o -> FlnCommands.detailLines(false, com.mojang.brigadier.arguments.StringArgumentType.getString(c, "key"), o))))))
                 .then(Commands.literal("big").executes(c -> run(c, FlnCommands::bigLines)))
                 .then(Commands.literal("limits").executes(c -> run(c, FlnCommands::limitLines))));
     }

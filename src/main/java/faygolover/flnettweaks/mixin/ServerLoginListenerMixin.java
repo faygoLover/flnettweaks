@@ -45,7 +45,7 @@ public abstract class ServerLoginListenerMixin {
 
     @ModifyConstant(method = "tick", constant = @Constant(intValue = 600))
     private int fln$loginTicks(int vanilla) {
-        return Math.max(vanilla, FlnConfig.loginTicks());
+        return Math.max(vanilla, faygolover.flnettweaks.NetPrefs.loginTicks(connection));
     }
 
     @Inject(method = "tick", at = @At("HEAD"))

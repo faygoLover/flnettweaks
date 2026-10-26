@@ -23,10 +23,27 @@ public final class ConnCause {
 
     public static volatile Cause cause;
     public static volatile String detail;
+    /** Вход сорвался посреди большого пакета или на долгой тишине — подсказка про ограничение скорости. */
+    public static volatile boolean burst;
+
+    public static final String BURST_HINT = "Похоже, канал не выдерживает всплески — попробуйте ограничение скорости в настройках соединения";
 
     public static void reset() {
         cause = null;
         detail = null;
+        burst = false;
+    }
+
+    /**
+     * Обрыв во время входа: недопринятый кадр от 64 КБ (как у игрока через VPN на «Registry minecraft:item», 707 КБ) или
+     * от сервера ничего нет 20 с и дольше. Ничего не включаем — только подсказка на экране отключения.
+     */
+    public static void noteJoin(io.netty.channel.Channel ch) {
+        if (burst || ch == null || !JoinTracker.active || JoinTracker.stage == JoinTracker.Stage.DONE) return;
+        faygolover.flnettweaks.NetStats.Conn st = faygolover.flnettweaks.NetStats.of(ch);
+        boolean stuck = st.pendingFrame >= 65536 && st.pendingHave < st.pendingFrame;
+        boolean quiet = st.lastInAt > 0 && System.currentTimeMillis() - st.lastInAt >= 20_000;
+        if (stuck || quiet) burst = true;
     }
 
     public static synchronized void set(Cause c, String d) {

@@ -44,7 +44,7 @@ public abstract class ServerGameListenerMixin {
     @ModifyConstant(method = "tick", constant = @Constant(longValue = 15000L))
     private long fln$keepAlive(long vanilla) {
         if (!keepAlivePending) return vanilla;
-        long limit = Math.max(vanilla, FlnConfig.keepAliveMs());
+        long limit = Math.max(vanilla, faygolover.flnettweaks.NetPrefs.keepAliveMs(connection));
         long waited = Util.getMillis() - keepAliveTime;
         // Отключение доходит не сразу (канал занят) — а tick зовёт нас каждый тик: пишем один раз на keepalive.
         if (waited >= limit && fln$loggedFor != keepAliveTime) {

@@ -24,6 +24,8 @@ public final class FlnConfig {
     public static final ForgeConfigSpec.BooleanValue AUTO_RECONNECT, CONN_LOG, CONN_LOG_DETAILS, TLS_SERVER, TLS_CLIENT, SMOOTH_JOIN;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> TLS_CLIENT_HOSTS;
     public static final ForgeConfigSpec.ConfigValue<String> TLS_SNI;
+    public static final ForgeConfigSpec.IntValue PLAYER_RATE_KBIT;
+    public static final ForgeConfigSpec.BooleanValue PLAYER_LONG_PATIENCE, PLAYER_STRONG_COMPRESSION, PROBE_SERVER;
 
     static {
         B.comment("Лимиты размеров. Ваниль: пакет мода игрок->сервер 32 КБ, сервер->игрок 1 МБ, пакет 8 МБ, кадр 2 МБ, NBT 2 МБ.",
@@ -78,6 +80,20 @@ public final class FlnConfig {
                 .defineListAllowEmpty("clientHosts", List.of(), o -> o instanceof String);
         TLS_SNI = B.comment("Клиент: имя сайта в начале TLS (SNI), его видит провайдер. Пусто — адрес сервера, если это имя, а не IP.").define("sni", "");
         B.pop();
+        B.comment("Клиент: расширенные настройки соединения (окно «Настройки соединения» на экране серверов). Уходят серверу при",
+                "подключении, сервер применяет их только к этому игроку. Сервер должен быть с flnettweaks 1.2.0+.").push("player");
+        PLAYER_RATE_KBIT = B.comment("Ограничение скорости, с которой сервер отдаёт данные этому игроку, кбит/с: 0 — авто (без ограничения),",
+                "4000, 2000, 1000, 500. Помогает, если канал (VPN, мобильная сеть) теряет пакеты на всплесках и вход обрывается на большом пакете.")
+                .defineInRange("rateKbit", 0, 0, 1000000);
+        PLAYER_LONG_PATIENCE = B.comment("Долгое терпение: обрыв, только если от сервера ничего нет 5 мин (обычно 2 мин); сервер так же ждёт игрока.")
+                .define("longPatience", false);
+        PLAYER_STRONG_COMPRESSION = B.comment("Сильное сжатие данных от сервера (меньше трафика, чуть больше работы процессору сервера).")
+                .define("strongCompression", false);
+        B.pop();
+        B.comment("Проверка связи (кнопка в окне настроек соединения).").push("probe");
+        PROBE_SERVER = B.comment("Сервер: отвечать на проверку связи (пинг и пробная загрузка до 8 МБ, не чаще раза в 10 с с одного адреса).")
+                .define("server", true);
+        B.pop();
         SPEC = B.build();
     }
 
@@ -125,6 +141,24 @@ public final class FlnConfig {
             FlnTweaks.LOG.info("flnettweaks: TLS при подключении к серверам — {} (переключено в меню)", on ? "вкл" : "выкл");
         } catch (RuntimeException e) {
             FlnTweaks.LOG.warn("flnettweaks: не удалось переключить TLS — конфиг ещё не загружен", e);
+        }
+    }
+
+    public static int playerRate() { return get(PLAYER_RATE_KBIT, 0); }
+    public static boolean playerLongPatience() { return get(PLAYER_LONG_PATIENCE, false); }
+    public static boolean playerStrongCompression() { return get(PLAYER_STRONG_COMPRESSION, false); }
+    public static boolean probeServer() { return get(PROBE_SERVER, true); }
+
+    /** Клиент: свои настройки соединения из окна — сразу в конфиг. Действуют со следующего подключения. */
+    public static void setPlayerPrefs(NetPrefs p) {
+        try {
+            PLAYER_RATE_KBIT.set(p.rateKbit);
+            PLAYER_LONG_PATIENCE.set(p.longPatience);
+            PLAYER_STRONG_COMPRESSION.set(p.strongCompression);
+            PLAYER_RATE_KBIT.save();
+            FlnTweaks.LOG.info("flnettweaks: настройки соединения — {}", p);
+        } catch (RuntimeException e) {
+            FlnTweaks.LOG.warn("flnettweaks: не удалось записать настройки соединения — конфиг ещё не загружен", e);
         }
     }
 

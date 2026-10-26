@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class ClientChannelInitMixin {
     @Redirect(method = "initChannel", remap = false, at = @At(value = "NEW", target = "(I)Lio/netty/handler/timeout/ReadTimeoutHandler;", remap = false))
     private ReadTimeoutHandler fln$timeout(int vanilla) {
-        return new ReadTimeoutHandler(FlnConfig.readTimeout());
+        return new ReadTimeoutHandler(faygolover.flnettweaks.NetPrefs.clientReadTimeout());
     }
 
     @Inject(method = "initChannel", at = @At("TAIL"), remap = false)

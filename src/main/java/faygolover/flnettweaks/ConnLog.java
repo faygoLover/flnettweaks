@@ -151,7 +151,9 @@ public final class ConnLog {
         Session s = new Session(sp.getGameProfile().getName(), ip(c.getRemoteAddress()), tls);
         ch.attr(SESSION).set(s);
         long join = System.currentTimeMillis() - NetStats.of(ch).created;
-        write(String.format(Locale.ROOT, "ВХОД    %s  %s  вход за %s%s", s.name, s.addr, dur(join), tls ? "  TLS" : ""));
+        NetPrefs np = NetPrefs.of(ch);
+        write(String.format(Locale.ROOT, "ВХОД    %s  %s  вход за %s%s%s", s.name, s.addr, dur(join), tls ? "  TLS" : "",
+                np.isDefault() ? "" : "  настройки: " + np));
         if (FlnConfig.connLogDetails() && c.getRemoteAddress() instanceof InetSocketAddress isa && isa.getAddress() != null) {
             InetAddress a = isa.getAddress();
             String key = a.getHostAddress();

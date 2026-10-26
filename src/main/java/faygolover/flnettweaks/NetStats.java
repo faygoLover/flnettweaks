@@ -41,6 +41,8 @@ public final class NetStats {
     public record Big(long at, String who, boolean in, String what, int size) {}
 
     public static final Map<String, Counter> IN = new ConcurrentHashMap<>(), OUT = new ConcurrentHashMap<>();
+    /** Разбивка внутри ключа (MsgTypes): тип сообщения канала, атрибут, тип BlockEntity, звук. */
+    public static final Map<String, Map<String, Counter>> IN_SUB = new ConcurrentHashMap<>(), OUT_SUB = new ConcurrentHashMap<>();
     private static final ArrayDeque<Big> BIG = new ArrayDeque<>();
     private static final int BIG_KEEP = 64;
 
@@ -62,6 +64,7 @@ public final class NetStats {
         c.lastIn = key; c.lastInSize = size; c.lastInAt = System.currentTimeMillis();
         long[] v = c.inBy.computeIfAbsent(key, k -> new long[2]); v[0]++; v[1] += size;
         IN.computeIfAbsent(key, k -> new Counter()).add(size);
+        sub(IN_SUB, key, p, size);
         if (size >= FlnConfig.bigPacket()) big(ch, true, p, size);
     }
 
@@ -72,7 +75,12 @@ public final class NetStats {
         c.lastOut = key; c.lastOutSize = size; c.lastOutAt = System.currentTimeMillis();
         long[] v = c.outBy.computeIfAbsent(key, k -> new long[2]); v[0]++; v[1] += size;
         OUT.computeIfAbsent(key, k -> new Counter()).add(size);
+        sub(OUT_SUB, key, p, size);
         if (size >= FlnConfig.bigPacket()) big(ch, false, p, size);
+    }
+
+    private static void sub(Map<String, Map<String, Counter>> m, String key, Packet<?> p, int size) {
+        MsgTypes.split(p, size, (name, bytes) -> m.computeIfAbsent(key, k -> new ConcurrentHashMap<>()).computeIfAbsent(name, k -> new Counter()).add(bytes));
     }
 
     private static void big(Channel ch, boolean in, Packet<?> p, int size) {
@@ -91,7 +99,7 @@ public final class NetStats {
     }
 
     public static void reset() {
-        IN.clear(); OUT.clear();
+        IN.clear(); OUT.clear(); IN_SUB.clear(); OUT_SUB.clear();
         synchronized (BIG) { BIG.clear(); }
         since = System.currentTimeMillis();
     }

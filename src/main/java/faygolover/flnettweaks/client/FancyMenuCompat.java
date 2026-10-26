@@ -19,6 +19,10 @@ import java.util.function.Supplier;
  * (пусто, пока не нужно). Строки по номеру: FancyMenu переносит %n% до подстановки плейсхолдеров.
  * flnet_reconnect — отсчёт до переподключения на экране отключения; действие flnet_reconnect_now — подключиться сейчас.
  * flnet_tls — «ВКЛ»/«ВЫКЛ» (tls.client); действие flnet_tls_toggle (on / off / toggle) — переключить до подключения.
+ * Окно настроек соединения (custom GUI dept_net): flnet_opt (name = rate / patience / compress / tls) — значение;
+ * действие flnet_opt («rate», «rate:1000», «patience:long», «compress:toggle»…); flnet_test (line = 0…3) — ход и итог
+ * проверки связи, flnet_test_state — idle / running / done / failed / advice (есть совет); действия flnet_test — начать,
+ * flnet_test_apply — применить совет. flnet_hint — подсказка на экране отключения (пусто — её нет).
  */
 final class FancyMenuCompat {
     private FancyMenuCompat() {}
@@ -31,8 +35,24 @@ final class FancyMenuCompat {
                 () -> ClientNet.reconnectLine().toUpperCase(java.util.Locale.ROOT)));
         PlaceholderRegistry.register(new Simple("flnet_tls", "TLS при подключении к серверам: ВКЛ / ВЫКЛ",
                 () -> FlnConfig.tlsClient() ? "ВКЛ" : "ВЫКЛ"));
+        PlaceholderRegistry.register(new Valued("flnet_opt", "name", "rate", "Настройка соединения: name = rate / patience / compress / tls",
+                v -> NetOpts.value(v).toUpperCase(java.util.Locale.ROOT)));
+        PlaceholderRegistry.register(new Valued("flnet_test", "line", "0", "Проверка связи: строка line = 0 (сервер или ход), 1–3 (итог)",
+                v -> { try { return NetTest.line(Integer.parseInt(v.trim())).toUpperCase(java.util.Locale.ROOT); } catch (RuntimeException e) { return ""; } }));
+        PlaceholderRegistry.register(new Simple("flnet_test_state", "Проверка связи: idle / running / done / failed / advice (готов совет)", () -> {
+            NetTest.State st = NetTest.state;
+            if (st == NetTest.State.DONE && NetTest.advice != null && !NetTest.advice.isDefault()) return "advice";
+            return st.name().toLowerCase(java.util.Locale.ROOT);
+        }));
+        PlaceholderRegistry.register(new Simple("flnet_hint", "Экран отключения: подсказка про ограничение скорости (пусто — её нет)",
+                () -> ClientNet.hintLine().toUpperCase(java.util.Locale.ROOT)));
         ActionRegistry.register(new ReconnectNow());
         ActionRegistry.register(new TlsToggle());
+        ActionRegistry.register(new Run("flnet_opt", true, "flnettweaks: настройка соединения", "rate / patience / compress / tls, можно с :значением", "rate", NetOpts::cycle));
+        ActionRegistry.register(new Run("flnet_test", false, "flnettweaks: проверить связь", "Пинг и пробная загрузка с сервера", null, v -> NetTest.start()));
+        ActionRegistry.register(new Run("flnet_test_apply", false, "flnettweaks: применить совет проверки", "Записать советованные настройки соединения", null, v -> NetTest.applyAdvice()));
+        ActionRegistry.register(new Run("flnet_netopts", false, "flnettweaks: окно настроек соединения", "Обычное окно (без меню-терминала)", null,
+                v -> net.minecraft.client.Minecraft.getInstance().setScreen(new NetOptionsScreen(net.minecraft.client.Minecraft.getInstance().screen))));
     }
 
     /** Кнопка в меню серверов: TLS вкл/выкл (значение on, off или toggle), сразу пишется в конфиг. */
@@ -63,6 +83,56 @@ final class FancyMenuCompat {
         @Override public Component getDescription() { return Component.literal("На экране отключения после обрыва связи — не ждать отсчёт"); }
         @Override public Component getValueDisplayName() { return Component.empty(); }
         @Override public String getValuePreset() { return null; }
+    }
+
+    /** Выполнить действие FancyMenu по имени (автотест стенда). */
+    static void run(String action, String value) {
+        Action a = ActionRegistry.getAction(action);
+        if (a != null) a.execute(value);
+    }
+
+    /** Действие с кодом. */
+    private static final class Run extends Action {
+        private final boolean hasValue;
+        private final String name, desc, preset;
+        private final java.util.function.Consumer<String> run;
+
+        Run(String id, boolean hasValue, String name, String desc, String preset, java.util.function.Consumer<String> run) {
+            super(id);
+            this.hasValue = hasValue; this.name = name; this.desc = desc; this.preset = preset; this.run = run;
+        }
+
+        @Override public boolean hasValue() { return hasValue; }
+        @Override public void execute(String value) { run.accept(value); }
+        @Override public Component getDisplayName() { return Component.literal(name); }
+        @Override public Component getDescription() { return Component.literal(desc); }
+        @Override public Component getValueDisplayName() { return hasValue ? Component.literal("значение") : Component.empty(); }
+        @Override public String getValuePreset() { return preset; }
+    }
+
+    /** Плейсхолдер с одним значением. */
+    private static final class Valued extends Simple {
+        private final String key, def;
+        private final java.util.function.Function<String, String> f;
+
+        Valued(String id, String key, String def, String desc, java.util.function.Function<String, String> f) {
+            super(id, desc, () -> "");
+            this.key = key; this.def = def; this.f = f;
+        }
+
+        @Override
+        public String getReplacementFor(DeserializedPlaceholderString dps) {
+            try { return f.apply(dps.values.getOrDefault(key, def)); } catch (RuntimeException e) { return ""; }
+        }
+
+        @Override public List<String> getValueNames() { return List.of(key); }
+
+        @Override
+        public DeserializedPlaceholderString getDefaultPlaceholderString() {
+            DeserializedPlaceholderString d = new DeserializedPlaceholderString(getIdentifier(), null, "");
+            d.values.put(key, def);
+            return d;
+        }
     }
 
     /** flnet_body: строка с номером line (0 — трафик, дальше последний пакет, реестры, чанки); нет такой — пусто. */

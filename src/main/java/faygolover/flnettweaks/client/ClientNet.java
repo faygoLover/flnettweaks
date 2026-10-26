@@ -56,12 +56,19 @@ public final class ClientNet {
         MinecraftForge.EVENT_BUS.addListener(ClientNet::onRender);
         MinecraftForge.EVENT_BUS.addListener(ClientNet::onTick);
         MinecraftForge.EVENT_BUS.addListener(ClientNet::onLogout);
+        MinecraftForge.EVENT_BUS.addListener(NetTest::onOpen);
+        if (NetAutotest.ON) MinecraftForge.EVENT_BUS.addListener(NetAutotest::tick);
     }
 
     /** ConnectScreen.startConnecting: запоминаем сервер для переподключения. */
     public static void target(ServerAddress addr, ServerData data) {
         address = addr;
         server = data;
+    }
+
+    /** Последний сервер, к которому подключались (для проверки связи). */
+    static ServerData lastServer() {
+        return server;
     }
 
     static String serverName() {
@@ -87,6 +94,9 @@ public final class ClientNet {
         }
         if (s == null || s.getClass() != DisconnectedScreen.class) return;
         ConnCause.Cause c = ConnCause.cause;
+        if (ConnCause.burst && c != ConnCause.Cause.KICK)
+            ConnLog.write("ПОДСКАЗКА " + serverName() + "  вход оборвался посреди большого пакета или долгой тишины — предложено ограничение скорости"
+                    + " (сейчас: " + faygolover.flnettweaks.NetPrefs.mine() + ")");
         // нет причины при attempt > 0 — не удалось даже подключиться (сервер ещё не поднялся, сеть не вернулась)
         boolean network = c == ConnCause.Cause.NETWORK || c == null && attempt > 0;
         if (!network || !FlnConfig.autoReconnect() || server == null || address == null) return;
@@ -144,8 +154,19 @@ public final class ClientNet {
         return ClientEvents.FANCYMENU && FlnConfig.joinDetailsViaFancyMenu();
     }
 
+    /** Экран отключения: подсказка «канал не выдерживает всплески» (пусто — её нет). Плейсхолдер flnet_hint. */
+    public static String hintLine() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.screen instanceof DisconnectedScreen && ConnCause.burst && ConnCause.cause != ConnCause.Cause.KICK ? ConnCause.BURST_HINT : "";
+    }
+
     /** Без FancyMenu-терминала: кнопка «Подключиться сейчас» и строка отсчёта на обычном экране отключения. */
     private static void onInit(ScreenEvent.Init.Post e) {
+        if (e.getScreen() instanceof DisconnectedScreen && !ClientEvents.FANCYMENU && !hintLine().isEmpty()) {
+            Screen s = e.getScreen();
+            e.addListener(Button.builder(Component.literal("Настройки соединения"), b -> Minecraft.getInstance().setScreen(new NetOptionsScreen(s)))
+                    .bounds(s.width / 2 - 100, 8, 200, 20).build());
+        }
         if (e.getScreen() != waitScreen || viaMenu()) return;
         Screen s = e.getScreen();
         e.addListener(Button.builder(Component.literal("Подключиться сейчас"), b -> reconnectNow())
@@ -153,7 +174,10 @@ public final class ClientNet {
     }
 
     private static void onRender(ScreenEvent.Render.Post e) {
-        if (!(e.getScreen() instanceof DisconnectedScreen) || viaMenu()) return;
+        if (!(e.getScreen() instanceof DisconnectedScreen)) return;
+        String h = ClientEvents.FANCYMENU ? "" : hintLine();
+        if (!h.isEmpty()) e.getGuiGraphics().drawCenteredString(Minecraft.getInstance().font, h, e.getScreen().width / 2, 34, 0xFFE060);
+        if (viaMenu()) return;
         String l = reconnectLine();
         if (!l.isEmpty()) e.getGuiGraphics().drawCenteredString(Minecraft.getInstance().font, l, e.getScreen().width / 2, e.getScreen().height - 46, 0xFFE060);
     }
@@ -177,7 +201,7 @@ public final class ClientNet {
         long sec = gap / 1000;
         if (sec == shownSec) return;
         shownSec = sec;
-        long left = Math.max(0, FlnConfig.readTimeout() - sec);
+        long left = Math.max(0, faygolover.flnettweaks.NetPrefs.clientReadTimeout() - sec);
         String t = "Сервер не отвечает " + sec + " с · ждём ещё " + left + " с" + (FlnConfig.autoReconnect() ? ", потом переподключимся" : "");
         mc.gui.setOverlayMessage(Component.literal(t).withStyle(ChatFormatting.YELLOW), false);
     }

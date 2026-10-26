@@ -45,7 +45,10 @@ public abstract class ConnectionMixin {
 
     @Inject(method = "exceptionCaught", at = @At("HEAD"), remap = false)
     private void fln$cause(ChannelHandlerContext ctx, Throwable t, CallbackInfo ci) {
-        if (fln$game() && channel != null && channel.isOpen()) ConnCause.error(t);
+        if (fln$game() && channel != null && channel.isOpen()) {
+            ConnCause.noteJoin(channel);
+            ConnCause.error(t);
+        }
     }
 
     @Inject(method = "disconnect", at = @At("HEAD"))
@@ -55,7 +58,10 @@ public abstract class ConnectionMixin {
 
     @Inject(method = "channelInactive", at = @At("HEAD"), remap = false)
     private void fln$closedByPeer(ChannelHandlerContext ctx, CallbackInfo ci) {
-        if (fln$game()) ConnCause.set(ConnCause.Cause.NETWORK, "сервер закрыл соединение без сообщения");
+        if (fln$game()) {
+            ConnCause.noteJoin(channel);
+            ConnCause.set(ConnCause.Cause.NETWORK, "сервер закрыл соединение без сообщения");
+        }
     }
 
     @ModifyVariable(method = "exceptionCaught", at = @At("HEAD"), argsOnly = true, remap = false)
@@ -83,6 +89,13 @@ public abstract class ConnectionMixin {
         FlnTweaks.LOG.warn(msg);
         ci.cancel();
         disconnect(Component.translatable("disconnect.timeout").append("\n").append(Component.literal(msg)));
+    }
+
+    /** Сервер, сильное сжатие у игрока (NetPrefs): Deflater на максимум. */
+    @Inject(method = "setupCompression", at = @At("TAIL"))
+    private void fln$strong(int threshold, boolean validate, CallbackInfo ci) {
+        if (receiving != PacketFlow.SERVERBOUND || channel == null || !faygolover.flnettweaks.NetPrefs.of(channel).strongCompression) return;
+        if (channel.pipeline().get("compress") instanceof CompressionEncoderAccess a) a.fln$deflater().setLevel(java.util.zip.Deflater.BEST_COMPRESSION);
     }
 
     /**
