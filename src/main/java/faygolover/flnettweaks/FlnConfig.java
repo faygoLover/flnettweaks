@@ -17,7 +17,7 @@ public final class FlnConfig {
     public static final ForgeConfigSpec SPEC;
 
     public static final ForgeConfigSpec.IntValue SERVERBOUND_PAYLOAD_KB, CLIENTBOUND_PAYLOAD_KB, LOGIN_PAYLOAD_KB, PACKET_KB, FRAME_KB, NBT_KB;
-    public static final ForgeConfigSpec.IntValue LOGIN_TIMEOUT_S, READ_TIMEOUT_S, KEEPALIVE_TIMEOUT_S;
+    public static final ForgeConfigSpec.IntValue LOGIN_TIMEOUT_S, READ_TIMEOUT_S, KEEPALIVE_TIMEOUT_S, CLIENT_WAIT_S;
     public static final ForgeConfigSpec.IntValue BIG_PACKET_KB, SLOW_STEP_S, SLOW_PACKET_MS;
     public static final ForgeConfigSpec.BooleanValue JOIN_TIMELINE, JOIN_DETAILS_ON_SCREEN, JOIN_DETAILS_VIA_FANCYMENU, IGNORE_CHAT_VALIDATION, SKIP_BROKEN_CHUNK_SECTIONS;
     public static final ForgeConfigSpec.IntValue CLOSE_AFTER_KICK_S, STALL_WARN_S, RECONNECT_ATTEMPTS, LOG_STALL_S;
@@ -25,7 +25,8 @@ public final class FlnConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> TLS_CLIENT_HOSTS;
     public static final ForgeConfigSpec.ConfigValue<String> TLS_SNI;
     public static final ForgeConfigSpec.IntValue PLAYER_RATE_KBIT;
-    public static final ForgeConfigSpec.BooleanValue PLAYER_LONG_PATIENCE, PLAYER_STRONG_COMPRESSION, PROBE_SERVER;
+    public static final ForgeConfigSpec.IntValue PLAYER_PATIENCE_S;
+    public static final ForgeConfigSpec.BooleanValue PLAYER_STRONG_COMPRESSION, PROBE_SERVER;
 
     static {
         B.comment("Лимиты размеров. Ваниль: пакет мода игрок->сервер 32 КБ, сервер->игрок 1 МБ, пакет 8 МБ, кадр 2 МБ, NBT 2 МБ.",
@@ -39,8 +40,13 @@ public final class FlnConfig {
         B.pop();
         B.comment("Тайм-ауты.").push("timeouts");
         LOGIN_TIMEOUT_S = B.comment("Сколько секунд даётся на вход (ваниль 30). Большие сборки входят дольше.").defineInRange("loginSeconds", 300, 30, 3600);
-        READ_TIMEOUT_S = B.comment("Обрыв, если от другой стороны ничего не приходит столько секунд (ваниль 30).").defineInRange("readSeconds", 120, 30, 3600);
-        KEEPALIVE_TIMEOUT_S = B.comment("Сервер: интервал и предел ответа на keepalive, секунд (ваниль 15: «Timed out» через 15–30 с).").defineInRange("keepAliveSeconds", 60, 15, 600);
+        READ_TIMEOUT_S = B.comment("Сервер: обрыв, если от игрока ничего не приходит столько секунд — для игроков без своих настроек",
+                "соединения (у остальных — их «Терпение», 30 с … 5 мин). Ваниль 30.").defineInRange("readSeconds", 30, 30, 3600);
+        KEEPALIVE_TIMEOUT_S = B.comment("Сервер: предел ответа на keepalive для игроков без своих настроек, секунд (ваниль 15: «Timed out»",
+                "через 15–30 с). Паузы самого сервера (большая вставка WorldEdit) не считаются: после них отсчёт начинается заново.")
+                .defineInRange("keepAliveSeconds", 30, 15, 600);
+        CLIENT_WAIT_S = B.comment("Клиент: обрыв, если от сервера ничего не приходит столько секунд (ваниль 30). Больше самой долгой паузы",
+                "сервера (вставка WorldEdit до минуты): иначе игроков выкинет во время лага сервера.").defineInRange("clientWaitSeconds", 120, 30, 3600);
         B.pop();
         B.comment("Диагностика.").push("diagnostics");
         BIG_PACKET_KB = B.comment("Пакеты не меньше этого размера (КБ) пишутся в лог и в /flnet big.").defineInRange("bigPacketKB", 512, 16, 262144);
@@ -85,8 +91,8 @@ public final class FlnConfig {
         PLAYER_RATE_KBIT = B.comment("Ограничение скорости, с которой сервер отдаёт данные этому игроку, кбит/с: 0 — авто (без ограничения),",
                 "4000, 2000, 1000, 500. Помогает, если канал (VPN, мобильная сеть) теряет пакеты на всплесках и вход обрывается на большом пакете.")
                 .defineInRange("rateKbit", 0, 0, 1000000);
-        PLAYER_LONG_PATIENCE = B.comment("Долгое терпение: обрыв, только если от сервера ничего нет 5 мин (обычно 2 мин); сервер так же ждёт игрока.")
-                .define("longPatience", false);
+        PLAYER_PATIENCE_S = B.comment("Терпение: сколько сервер ждёт этого игрока, если от него нет ответа (обрыв, провал VPN), секунд:",
+                "30 (обычно), 60, 120, 300. С плохим VPN — больше, чтобы не выкидывало.").defineInRange("patienceSeconds", 30, 15, 600);
         PLAYER_STRONG_COMPRESSION = B.comment("Сильное сжатие данных от сервера (меньше трафика, чуть больше работы процессору сервера).")
                 .define("strongCompression", false);
         B.pop();
@@ -112,8 +118,8 @@ public final class FlnConfig {
     public static int frame() { return get(FRAME_KB, 32768) * 1024; }
     public static long nbt() { return get(NBT_KB, 65536) * 1024L; }
     public static int loginTicks() { return get(LOGIN_TIMEOUT_S, 300) * 20; }
-    public static int readTimeout() { return get(READ_TIMEOUT_S, 120); }
-    public static long keepAliveMs() { return get(KEEPALIVE_TIMEOUT_S, 60) * 1000L; }
+    public static int readTimeout() { return get(READ_TIMEOUT_S, 30); }
+    public static long keepAliveMs() { return get(KEEPALIVE_TIMEOUT_S, 30) * 1000L; }
     public static int bigPacket() { return get(BIG_PACKET_KB, 512) * 1024; }
     public static long slowStepMs() { return get(SLOW_STEP_S, 10) * 1000L; }
     public static long slowPacketNs() { return get(SLOW_PACKET_MS, 500) * 1_000_000L; }
@@ -145,7 +151,8 @@ public final class FlnConfig {
     }
 
     public static int playerRate() { return get(PLAYER_RATE_KBIT, 0); }
-    public static boolean playerLongPatience() { return get(PLAYER_LONG_PATIENCE, false); }
+    public static int playerPatience() { return get(PLAYER_PATIENCE_S, NetPrefs.DEFAULT_PATIENCE); }
+    public static int clientWaitSeconds() { return get(CLIENT_WAIT_S, 120); }
     public static boolean playerStrongCompression() { return get(PLAYER_STRONG_COMPRESSION, false); }
     public static boolean probeServer() { return get(PROBE_SERVER, true); }
 
@@ -153,7 +160,7 @@ public final class FlnConfig {
     public static void setPlayerPrefs(NetPrefs p) {
         try {
             PLAYER_RATE_KBIT.set(p.rateKbit);
-            PLAYER_LONG_PATIENCE.set(p.longPatience);
+            PLAYER_PATIENCE_S.set(p.patienceS);
             PLAYER_STRONG_COMPRESSION.set(p.strongCompression);
             PLAYER_RATE_KBIT.save();
             FlnTweaks.LOG.info("flnettweaks: настройки соединения — {}", p);

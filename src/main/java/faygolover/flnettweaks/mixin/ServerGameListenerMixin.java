@@ -44,10 +44,13 @@ public abstract class ServerGameListenerMixin {
     @ModifyConstant(method = "tick", constant = @Constant(longValue = 15000L))
     private long fln$keepAlive(long vanilla) {
         if (!keepAlivePending) return vanilla;
-        long limit = Math.max(vanilla, faygolover.flnettweaks.NetPrefs.keepAliveMs(connection));
-        long waited = Util.getMillis() - keepAliveTime;
+        long base = Math.max(vanilla, faygolover.flnettweaks.NetPrefs.keepAliveMs(connection));
+        // ваниль сравнивает «сейчас − отправка» с этим числом: сдвигаем предел на паузу сервера после отправки
+        long limit = base + (faygolover.flnettweaks.ServerStall.since(keepAliveTime) - keepAliveTime);
+        // Паузы самого сервера не в счёт: после них ждём заново (лаг WorldEdit не выкидывает игроков).
+        long waited = Util.getMillis() - faygolover.flnettweaks.ServerStall.since(keepAliveTime);
         // Отключение доходит не сразу (канал занят) — а tick зовёт нас каждый тик: пишем один раз на keepalive.
-        if (waited >= limit && fln$loggedFor != keepAliveTime) {
+        if (waited >= base && fln$loggedFor != keepAliveTime) {
             fln$loggedFor = keepAliveTime;
             NetStats.Conn st = NetStats.of(connection.channel());
             long now = System.currentTimeMillis();

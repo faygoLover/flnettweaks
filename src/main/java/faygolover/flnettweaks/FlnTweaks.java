@@ -48,6 +48,7 @@ public final class FlnTweaks {
     }
 
     private void onServerTick(TickEvent.ServerTickEvent e) {
+        ServerStall.onTick(e);
         if (e.phase == TickEvent.Phase.END) ConnLog.serverTick(e.getServer());
     }
 

@@ -123,7 +123,8 @@ public final class FlnCommands {
         o.accept(" пакеты входа " + Net.size(FlnConfig.loginPayload()) + " (ваниль 1 МБ)");
         o.accept(" пакет целиком " + Net.size(FlnConfig.packet()) + " (ваниль 8 МБ), кадр " + Net.size(FlnConfig.frame()) + " (ваниль 2 МБ)");
         o.accept(" NBT " + Net.size(FlnConfig.nbt()) + " (ваниль 2 МБ)");
-        o.accept(" вход " + FlnConfig.loginTicks() / 20 + " с, тишина " + FlnConfig.readTimeout() + " с, keepalive " + FlnConfig.keepAliveMs() / 1000 + " с (ваниль 30/30/15)");
+        o.accept(" вход " + FlnConfig.loginTicks() / 20 + " с; без своих настроек: тишина " + FlnConfig.readTimeout() + " с, keepalive " + FlnConfig.keepAliveMs() / 1000
+                + " с (ваниль 30/15); игроки с настройками — их «Сервер ждёт меня»; паузы сервера не считаются");
     }
 
     private static String label(String key) {

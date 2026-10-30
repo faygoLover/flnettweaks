@@ -11,8 +11,8 @@ public final class NetOpts {
 
     static final String RATE_HELP = "Сколько сервер отдаёт вам в секунду. Авто — без ограничения. Ограничение помогает, если VPN или "
             + "мобильная сеть теряет данные на всплесках и вход обрывается на большом пакете. Вход станет дольше.";
-    static final String PATIENCE_HELP = "Сколько ждать молчащий сервер, прежде чем считать связь оборванной: 2 мин или 5 мин "
-            + "(сервер ждёт вас так же). Для медленного или нестабильного канала.";
+    static final String PATIENCE_HELP = "Сколько сервер ждёт вас, если от вас нет ответа: 30 с, 1, 2 или 5 мин. С плохим VPN "
+            + "(провалы связи) поставьте больше — и не будет выкидывать. Лаги самого сервера не выкидывают при любом значении.";
     static final String COMPRESS_HELP = "Сильное — сервер сжимает данные сильнее: меньше трафика, вход на медленном канале быстрее.";
 
     /** Значение для плейсхолдера flnet_opt (name = rate / patience / compress / tls). */
@@ -20,7 +20,7 @@ public final class NetOpts {
         NetPrefs p = NetPrefs.mine();
         return switch (name == null ? "" : name.trim().toLowerCase(Locale.ROOT)) {
             case "rate" -> NetPrefs.rateName(p.rateKbit);
-            case "patience" -> NetPrefs.patienceName(p.longPatience);
+            case "patience" -> NetPrefs.patienceName(p.patienceS);
             case "compress" -> NetPrefs.compressionName(p.strongCompression);
             case "tls" -> FlnConfig.tlsClient() ? "вкл" : "выкл";
             default -> "";
@@ -35,7 +35,8 @@ public final class NetOpts {
         if (i >= 0) { name = s.substring(0, i); v = s.substring(i + 1); }
         NetPrefs p = NetPrefs.mine();
         int rate = p.rateKbit;
-        boolean longP = p.longPatience, strong = p.strongCompression;
+        int pat = p.patienceS;
+        boolean strong = p.strongCompression;
         switch (name) {
             case "rate" -> {
                 if (v.equals("next") || v.equals("toggle")) {
@@ -45,11 +46,19 @@ public final class NetOpts {
                 } else if (v.equals("auto")) rate = 0;
                 else try { rate = Integer.parseInt(v); } catch (NumberFormatException ignored) {}
             }
-            case "patience" -> longP = v.equals("long") || (!v.equals("normal") && !longP);
+            case "patience" -> {
+                if (v.equals("next") || v.equals("toggle")) {
+                    int k = 0;
+                    for (int j = 0; j < NetPrefs.PATIENCE.length; j++) if (NetPrefs.PATIENCE[j] == pat) k = j;
+                    pat = NetPrefs.PATIENCE[(k + 1) % NetPrefs.PATIENCE.length];
+                } else if (v.equals("long")) pat = 300;
+                else if (v.equals("normal")) pat = NetPrefs.DEFAULT_PATIENCE;
+                else try { pat = Integer.parseInt(v); } catch (NumberFormatException ignored) {}
+            }
             case "compress" -> strong = v.equals("strong") || (!v.equals("normal") && !strong);
             case "tls" -> { FlnConfig.setTlsClient(v.equals("on") || (!v.equals("off") && !FlnConfig.tlsClient())); return; }
             default -> { return; }
         }
-        FlnConfig.setPlayerPrefs(new NetPrefs(rate, longP, strong));
+        FlnConfig.setPlayerPrefs(new NetPrefs(rate, pat, strong));
     }
 }

@@ -190,9 +190,12 @@ public final class NetTest {
             rate = 500;
             for (int r : new int[]{4000, 2000, 1000}) if (r <= mbit * 1000 * 0.6) { rate = r; break; }
         }
-        boolean longP = avg > 250 || jitter > 500 || bursty;
+        // Терпение: по самому долгому замиранию с запасом; большой пинг или разброс — хотя бы минута.
+        int pat = NetPrefs.DEFAULT_PATIENCE;
+        if (avg > 250 || jitter > 500) pat = 60;
+        if (bursty) pat = maxGap >= 20000 ? 300 : maxGap >= 8000 ? 120 : 60;
         boolean strong = mbit < 2;
-        NetPrefs a = new NetPrefs(rate, longP, strong);
+        NetPrefs a = new NetPrefs(rate, pat, strong);
         List<String> l = new ArrayList<>();
         l.add(String.format(Locale.ROOT, "пинг %d мс (от %d до %d)%s", avg, min, max, tls ? ", через TLS" : ""));
         l.add(String.format(Locale.ROOT, "скорость %.1f Мбит/с (%.1f МБ)", mbit, got / 1048576.0)

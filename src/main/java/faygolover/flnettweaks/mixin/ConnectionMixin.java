@@ -3,6 +3,7 @@ package faygolover.flnettweaks.mixin;
 import faygolover.flnettweaks.FlnConfig;
 import faygolover.flnettweaks.FlnTweaks;
 import faygolover.flnettweaks.Net;
+import faygolover.flnettweaks.NetPrefs;
 import faygolover.flnettweaks.NetStats;
 import faygolover.flnettweaks.client.ConnCause;
 import io.netty.channel.Channel;
@@ -84,8 +85,10 @@ public abstract class ConnectionMixin {
         long now = System.currentTimeMillis();
         String last = st.lastInAt == 0 ? "ничего" : st.lastIn + " (" + Net.size(st.lastInSize) + ") " + (now - st.lastInAt) / 1000 + " с назад";
         String who = receiving == PacketFlow.CLIENTBOUND ? "сервера" : Net.who(channel);
-        String msg = "flnettweaks: от " + who + " ничего не приходило " + FlnConfig.readTimeout() + " с (последнее: " + last
-                + "). Предел — timeouts.readSeconds в " + Net.CONFIG;
+        boolean fromServer = receiving == PacketFlow.CLIENTBOUND;
+        int limit = fromServer ? NetPrefs.clientReadTimeout() : Math.max(30, NetPrefs.of(channel).patienceS);
+        String msg = "flnettweaks: от " + who + " ничего не приходило " + limit + " с (последнее: " + last + "). Предел — "
+                + (fromServer ? "timeouts.clientWaitSeconds в " + Net.CONFIG + " или «Сервер ждёт меня»" : "«Сервер ждёт меня» у игрока (readSeconds — без настроек)");
         FlnTweaks.LOG.warn(msg);
         ci.cancel();
         disconnect(Component.translatable("disconnect.timeout").append("\n").append(Component.literal(msg)));

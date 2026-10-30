@@ -60,7 +60,7 @@ public final class NetAutotest {
                     java.nio.file.Path f = mc.gameDirectory.toPath().resolve("flnet_autotest_rate.txt");
                     if (java.nio.file.Files.exists(f)) rate = Integer.parseInt(java.nio.file.Files.readString(f).trim());
                 } catch (Exception ignored) {}
-                if (rate >= 0) FlnConfig.setPlayerPrefs(new NetPrefs(rate, NetPrefs.mine().longPatience, NetPrefs.mine().strongCompression));
+                if (rate >= 0) FlnConfig.setPlayerPrefs(new NetPrefs(rate, NetPrefs.mine().patienceS, NetPrefs.mine().strongCompression));
                 ConnCause.reset();
                 ServerData d = NetTest.target();
                 FlnTweaks.LOG.info("flnettweaks autotest: вход на {} с настройками {}", d == null ? "?" : d.ip, NetPrefs.mine());

@@ -40,7 +40,7 @@ public final class NetOptionsScreen extends Screen {
     private void refresh() {
         NetPrefs p = NetPrefs.mine();
         rate.setMessage(Component.literal("Ограничение скорости: " + NetPrefs.rateName(p.rateKbit)));
-        patience.setMessage(Component.literal("Терпение при входе: " + NetPrefs.patienceName(p.longPatience)));
+        patience.setMessage(Component.literal("Сервер ждёт меня: " + NetPrefs.patienceName(p.patienceS)));
         compress.setMessage(Component.literal("Сжатие: " + NetPrefs.compressionName(p.strongCompression)));
     }
 
