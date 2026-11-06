@@ -117,6 +117,9 @@ tasks.named('jar', Jar).configure {
                 'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
         ])
     }
+    // Отладка (тестовый канал, /flnet test, автопрогоны) в сборку для игроков не идёт.
+    // Jar для стенда с -Dflnettweaks.debug*: ./gradlew build -Pdevjar
+    if (!project.hasProperty('devjar')) exclude 'faygolover/flnettweaks/DebugTools*', 'faygolover/flnettweaks/client/NetAutotest*'
 
     finalizedBy 'reobfJar'
 }

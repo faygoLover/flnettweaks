@@ -21,7 +21,7 @@ public final class FlnCommands {
 
     public static void register(CommandDispatcher<CommandSourceStack> d) {
         var root = Commands.literal("flnet").requires(s -> s.hasPermission(2));
-        DebugTools.command(root);
+        if (FlnTweaks.DEBUG) DebugTools.command(root);
         d.register(root
                 .then(Commands.literal("stats").executes(c -> stats(c, true))
                         .then(Commands.literal("in").executes(c -> stats(c, true))

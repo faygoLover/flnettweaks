@@ -118,7 +118,7 @@ public final class ClientEvents {
         }
     }
 
-    private static final boolean AUTOTEST = DebugTools.ON && Boolean.getBoolean("flnettweaks.debug.autotest");
+    private static final boolean AUTOTEST = FlnTweaks.DEBUG && Boolean.getBoolean("flnettweaks.debug.autotest");
     private static int testTicks;
 
     /** Автотест (dev): 100 КБ серверу с ответом 3 МБ (кадр больше ванильных 2 МБ), затем 9 МБ серверу — выше лимита, ждём понятное отключение. */
@@ -226,7 +226,7 @@ public final class ClientEvents {
 
     private static void onCommands(RegisterClientCommandsEvent e) {
         var root = Commands.literal("flnetc");
-        if (DebugTools.ON) root.then(Commands.literal("test").then(Commands.argument("kb", IntegerArgumentType.integer(1, 262144)).executes(c -> {
+        if (FlnTweaks.DEBUG) root.then(Commands.literal("test").then(Commands.argument("kb", IntegerArgumentType.integer(1, 262144)).executes(c -> {
             int kb = IntegerArgumentType.getInteger(c, "kb");
             var conn = Minecraft.getInstance().getConnection();
             if (conn != null) conn.send(new ServerboundCustomPayloadPacket(DebugTools.TEST, DebugTools.noise(kb)));

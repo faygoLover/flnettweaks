@@ -17,12 +17,12 @@ import net.minecraftforge.event.TickEvent;
 /**
  * Проверка окна настроек соединения на стенде (-Dflnettweaks.debug.nettest=true): экран серверов → окно (FancyMenu
  * dept_net или обычное) → проверка связи → скриншоты → экран отключения с подсказкой → вход с настройками из
- * -Dflnettweaks.debug.rate (кбит/с). Ничего не делает без свойства.
+ * -Dflnettweaks.debug.rate (кбит/с). Ничего не делает без свойства. В jar для игроков не идёт.
  */
 public final class NetAutotest {
     private NetAutotest() {}
 
-    public static final boolean ON = Boolean.getBoolean("flnettweaks.debug.nettest");
+    public static final boolean ON = FlnTweaks.NETTEST;
     private static int t, step;
 
     private static void shot(Minecraft mc, String name) {

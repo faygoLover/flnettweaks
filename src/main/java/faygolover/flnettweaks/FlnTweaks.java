@@ -21,6 +21,10 @@ public final class FlnTweaks {
     public static final String MODID = "flnettweaks";
     public static final Logger LOG = LogUtils.getLogger();
     private static final String NET_VERSION = "1";
+    /** Проверка мода на стенде (-Dflnettweaks.debug=true). DebugTools и NetAutotest в сборку для игроков не идут
+     *  (build.gradle), поэтому трогать их можно только за этими флагами. */
+    public static final boolean DEBUG = Boolean.getBoolean("flnettweaks.debug");
+    public static final boolean NETTEST = Boolean.getBoolean("flnettweaks.debug.nettest");
 
     public FlnTweaks() {
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, FlnConfig.SPEC, MODID + "-common.toml");
@@ -31,7 +35,7 @@ public final class FlnTweaks {
         MinecraftForge.EVENT_BUS.addListener(this::onLoggedIn);
         MinecraftForge.EVENT_BUS.addListener(this::onServerTick);
         MinecraftForge.EVENT_BUS.addListener(this::onServerStarting);
-        DebugTools.init();
+        if (DEBUG) DebugTools.init();
         if (FMLEnvironment.dist.isClient()) ClientEvents.init();
     }
 

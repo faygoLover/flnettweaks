@@ -57,7 +57,7 @@ public final class ClientNet {
         MinecraftForge.EVENT_BUS.addListener(ClientNet::onTick);
         MinecraftForge.EVENT_BUS.addListener(ClientNet::onLogout);
         MinecraftForge.EVENT_BUS.addListener(NetTest::onOpen);
-        if (NetAutotest.ON) MinecraftForge.EVENT_BUS.addListener(NetAutotest::tick);
+        if (FlnTweaks.NETTEST) MinecraftForge.EVENT_BUS.addListener(NetAutotest::tick);
     }
 
     /** ConnectScreen.startConnecting: запоминаем сервер для переподключения. */

@@ -18,11 +18,11 @@ import net.minecraftforge.network.NetworkRegistry;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-/** Только для проверки мода (-Dflnettweaks.debug=true): большие пакеты и медленный вход. */
+/** Только для проверки мода (-Dflnettweaks.debug=true): большие пакеты и медленный вход. В jar для игроков не идёт. */
 public final class DebugTools {
     private DebugTools() {}
 
-    public static final boolean ON = Boolean.getBoolean("flnettweaks.debug");
+    public static final boolean ON = FlnTweaks.DEBUG;
     public static final ResourceLocation TEST = new ResourceLocation(FlnTweaks.MODID, "test");
 
     public static void init() {
